@@ -645,6 +645,62 @@
     .sidebar { max-height: none; }
     .document { width: 100%; padding: 30px; }
   }
+
+  /* Responsive editor: all fields remain usable on phone, tablet and desktop. */
+  html, body { max-width:100%; overflow-x:hidden; }
+  .app { min-width:0; }
+  .sidebar, .preview-wrap { min-width:0; }
+  input, textarea, select { min-width:0; }
+  .page-viewport { width:794px; max-width:100%; margin-inline:auto; position:relative; }
+  .document {
+    width:794px !important; min-height:1123px;
+    padding:46px !important;
+    margin:0 !important;
+    overflow-wrap:anywhere;
+    box-shadow:0 6px 30px rgba(0,0,0,.09);
+  }
+  .document table.items { table-layout:fixed; }
+  .document table.items th:nth-child(1) { width:7%; }
+  .document table.items th:nth-child(2) { width:37%; }
+  .document table.items th:nth-child(3) { width:16%; }
+  .document table.items th:nth-child(4) { width:18%; }
+  .document table.items th:nth-child(5) { width:22%; }
+  .document table.items th, .document table.items td { overflow-wrap:anywhere; }
+  .document table.items tr { break-inside:avoid; page-break-inside:avoid; }
+  .document .doc-header, .document .parties, .document .totals,
+  .document .bank-section, .document .notes { break-inside:avoid; page-break-inside:avoid; }
+  .preview-wrap { overflow-x:hidden; }
+  .preview-controls { padding:0; gap:12px; flex-wrap:wrap; }
+  .modal { width:min(600px, calc(100vw - 24px)); max-height:85dvh; }
+  @media (max-width:1100px) {
+    .app { display:flex; flex-direction:column; }
+    .sidebar { max-height:none; overflow:visible; padding:16px; }
+    .preview-wrap { max-height:none; overflow:visible; padding:16px; }
+  }
+  @media (max-width:520px) {
+    .sidebar { padding:12px; }
+    .preview-wrap { padding:12px 8px 26px; }
+    .section { padding:12px; }
+    .row2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .item-card .row3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .field input, .field textarea, .field select { font-size:16px; }
+    .actions { position:static; }
+    .doc-type button { min-height:44px; }
+    .btn, .small-btn { min-height:44px; }
+    .history-item { gap:10px; flex-wrap:wrap; }
+    .toast { width:calc(100vw - 32px); text-align:center; }
+  }
+  @page { size:A4 portrait; margin:0; }
+  @media print {
+    html, body { width:210mm; background:white !important; overflow:visible !important; }
+    .app { display:block !important; }
+    .sidebar, .preview-controls, .toast, .modal-bg { display:none !important; }
+    .preview-wrap { padding:0 !important; margin:0 !important; overflow:visible !important; max-height:none !important; }
+    .page-viewport { width:210mm !important; height:auto !important; transform:none !important; margin:0 !important; }
+    .document { width:210mm !important; min-height:297mm !important; padding:12mm !important; box-shadow:none !important; transform:none !important; }
+    .document * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+
 </style>
 </head>
 <body>
@@ -806,7 +862,7 @@ Oman</textarea>
 
     <!-- Actions -->
     <div class="actions">
-      <button class="btn btn-primary" onclick="savePDF()">💾 حفظ كـ PDF</button>
+      <button class="btn btn-primary" id="downloadPdfBtn" onclick="savePDF()">⬇️ تنزيل الفاتورة PDF — A4</button>
       <button class="btn btn-secondary" onclick="saveDocument()">📁 حفظ في السجل</button>
       <button class="btn btn-secondary" onclick="openHistory()">📋 السجل</button>
       <button class="btn btn-ghost" onclick="newDocument()">🆕 مستند جديد</button>
@@ -818,13 +874,13 @@ Oman</textarea>
     <div class="preview-controls">
       <h1>معاينة المستند</h1>
       <div>
-        <button class="small-btn" onclick="window.print()">🖨️ طباعة</button>
+        <button class="small-btn" onclick="window.print()">🖨️ طباعة A4</button>
       </div>
     </div>
 
-    <div class="document" id="documentPreview">
+    <div class="page-viewport" id="pageViewport"><div class="document" id="documentPreview">
       <!-- Rendered dynamically -->
-    </div>
+    </div></div>
   </div>
 </div>
 
@@ -1168,6 +1224,7 @@ function render() {
       ${state.from.name} ${state.from.phone ? '• ' + escapeHtml(state.from.phone) : ''}
     </div>
   `;
+  requestAnimationFrame(fitInvoicePreview);
 }
 
 // =============== LOGO ===============
@@ -1210,55 +1267,84 @@ function removeCustomerLogo() {
 
 // =============== PDF ===============
 async function savePDF() {
-  if (!state.to.name) {
-    if (!confirm('لم تدخل اسم العميل. هل تريد المتابعة؟')) return;
-  }
-  toast('جاري إنشاء PDF...');
-  const el = document.getElementById('documentPreview');
-  // Render at higher resolution
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    backgroundColor: '#ffffff',
-    useCORS: true
-  });
-  const imgData = canvas.toDataURL('image/png');
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  if (imgHeight <= pageHeight) {
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-  } else {
-    // Multi-page
-    let position = 0;
-    let remaining = imgHeight;
-    while (remaining > 0) {
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      remaining -= pageHeight;
-      if (remaining > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-      }
+  gatherState();
+  if (!state.to.name && !confirm('لم تدخل اسم العميل. هل تريد المتابعة؟')) return;
+  const btn = document.getElementById('downloadPdfBtn');
+  if (btn?.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري تجهيز PDF...'; }
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+    if (!window.html2canvas || !window.jspdf?.jsPDF) {
+      throw new Error('مكتبة إنشاء PDF لم تُحمّل. تأكد من اتصال الإنترنت ثم أعد المحاولة.');
     }
-  }
+    const el = document.getElementById('documentPreview');
+    const scale = 2;
+    const canvas = await html2canvas(el, {
+      scale, width:794, windowWidth:1200, backgroundColor:'#ffffff',
+      useCORS:true, allowTaint:false, logging:false,
+      onclone: clonedDocument => {
+        const copy = clonedDocument.getElementById('documentPreview');
+        copy.style.transform = 'none';
+        copy.style.width = '794px';
+        copy.style.margin = '0';
+        copy.style.boxShadow = 'none';
+      }
+    });
+    if (!canvas.width || !canvas.height) throw new Error('لم تنجح عملية تصوير الفاتورة.');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
+    const pageWidth = 210, pageHeight = 297;
+    const maxSlicePx = Math.floor(canvas.width * pageHeight / pageWidth);
 
-  const safeName = (state.to.name || 'customer').replace(/[\\/:*?"<>|]/g, '_');
-  const typeLabel = state.docType === 'quotation' ? 'quotation' : 'invoice';
-  const filename = `${typeLabel}-${state.docNumber}-${safeName}.pdf`;
-  pdf.save(filename);
-  toast('✅ تم حفظ الملف: ' + filename);
-
-  // Auto-increment counter & save to history after first PDF for this number
-  const counters = getCounters();
-  const numericPart = parseInt(state.docNumber.replace(/\D/g, ''), 10);
-  if (numericPart > (counters[state.docType] || 0)) {
-    counters[state.docType] = numericPart;
-    setCounters(counters);
+    // Prefer page breaks BETWEEN line items and major blocks to avoid cut text.
+    const rect = el.getBoundingClientRect();
+    const boundaryEls = el.querySelectorAll('tbody tr, .doc-header, .parties, .totals, .notes, .bank-section, .footer-bar');
+    const previewScale = rect.width / 794 || 1;
+    const stops = [...boundaryEls].map(node => Math.round(((node.getBoundingClientRect().bottom - rect.top) / previewScale) * canvas.width / 794))
+      .filter(v => v > 0 && v <= canvas.height).sort((a,b)=>a-b);
+    let startY = 0;
+    let page = 0;
+    while (startY < canvas.height - 2) {
+      const remaining = canvas.height - startY;
+      let endY = Math.min(startY + maxSlicePx, canvas.height);
+      if (endY < canvas.height) {
+        const safe = stops.filter(v => v > startY + maxSlicePx * .55 && v <= endY - 16);
+        if (safe.length) endY = safe[safe.length - 1];
+      }
+      if (endY <= startY) endY = Math.min(startY + maxSlicePx,canvas.height);
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width;
+      slice.height = endY - startY;
+      const ctx = slice.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,slice.width,slice.height);
+      ctx.drawImage(canvas,0,startY,canvas.width,slice.height,0,0,slice.width,slice.height);
+      if (page++) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg',.94),'JPEG',0,0,pageWidth,Math.min(pageHeight,slice.height * pageWidth / canvas.width));
+      startY = endY;
+      if (page > 60) throw new Error('الفاتورة طويلة جداً؛ قلل عدد البنود وحاول مرة أخرى.');
+    }
+    const safeName = (state.to.name || 'customer').replace(/[\\/:*?"<>|]/g,'_').slice(0,45);
+    const docNo = (state.docNumber || 'document').replace(/[\\/:*?"<>|]/g,'_');
+    const typeLabel = state.docType === 'quotation' ? 'quotation' : 'invoice';
+    const filename = `${typeLabel}-${docNo}-${safeName}.pdf`;
+    pdf.save(filename);
+    toast('✅ تم تنزيل ملف PDF بمقاس A4');
+    try {
+      const counters = getCounters();
+      const numericPart = parseInt(state.docNumber.replace(/\D/g,''),10);
+      if (numericPart > (counters[state.docType] || 0)) {
+        counters[state.docType] = numericPart;
+        setCounters(counters);
+      }
+      saveDocument(true);
+    } catch (storageError) { console.warn('تعذر حفظ السجل محليًا',storageError); }
+  } catch (err) {
+    console.error('PDF export error:',err);
+    toast('❌ تعذر تنزيل PDF، استخدم زر الطباعة واحفظ بصيغة PDF');
+    alert('تعذر تنزيل PDF: ' + (err.message || err) + '\nيمكنك استخدام زر «طباعة A4» ثم اختيار Save as PDF.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ تنزيل الفاتورة PDF — A4'; }
   }
-  saveDocument(true);
 }
 
 // =============== HISTORY ===============
@@ -1393,6 +1479,21 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
+
+// Keep a REAL 794px A4 layout for exporting while scaling ONLY the preview on mobile.
+function fitInvoicePreview() {
+  const wrap = document.getElementById('pageViewport');
+  const doc = document.getElementById('documentPreview');
+  if (!wrap || !doc) return;
+  const available = wrap.parentElement.clientWidth;
+  const ratio = Math.min(1, Math.max(.2, available / 794));
+  doc.style.transformOrigin = 'top left';
+  doc.style.transform = `scale(${ratio})`;
+  wrap.style.width = `${794 * ratio}px`;
+  wrap.style.height = `${doc.offsetHeight * ratio}px`;
+}
+window.addEventListener('resize', fitInvoicePreview);
+if (document.fonts?.ready) document.fonts.ready.then(fitInvoicePreview);
 
 // =============== INIT ===============
 function init() {
