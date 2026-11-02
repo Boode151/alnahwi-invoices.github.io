@@ -393,7 +393,7 @@
     justify-content: center;
     overflow: hidden;
   }
-  .doc-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .doc-logo img { display:block; max-width: 100%; max-height: 100%; object-fit: contain; }
   .doc-logo.empty { color: #d1d5db; font-size: 12px; border: 1px dashed #e5e7eb; border-radius: 8px; }
 
   .parties {
@@ -653,7 +653,7 @@
   input, textarea, select { min-width:0; }
   .page-viewport { width:794px; max-width:100%; margin-inline:auto; position:relative; }
   .document {
-    width:794px !important; min-height:1123px;
+    width:794px !important; min-height:0; /* Content height determines PDF page count */
     padding:46px !important;
     margin:0 !important;
     overflow-wrap:anywhere;
@@ -696,8 +696,8 @@
     .app { display:block !important; }
     .sidebar, .preview-controls, .toast, .modal-bg { display:none !important; }
     .preview-wrap { padding:0 !important; margin:0 !important; overflow:visible !important; max-height:none !important; }
-    .page-viewport { width:210mm !important; height:auto !important; transform:none !important; margin:0 !important; }
-    .document { width:210mm !important; min-height:297mm !important; padding:12mm !important; box-shadow:none !important; transform:none !important; }
+    .page-viewport { width:210mm !important; height:auto !important; transform:none !important; margin:0 !important; overflow:visible !important; }
+    .document { width:210mm !important; min-height:0 !important; padding:12mm !important; box-shadow:none !important; transform:none !important; }
     .document * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
 
@@ -739,7 +739,7 @@
         <div class="logo-preview" id="logoPreview">شعار</div>
         <label for="logoInput">رفع شعار</label>
         <input type="file" id="logoInput" accept="image/*" onchange="uploadLogo(event)">
-        <button onclick="removeLogo()" title="حذف">✕</button>
+        <button onclick="removeLogo()" title="استعادة شعار مطبعة النحوي">↻</button>
       </div>
     </div>
 
@@ -896,12 +896,14 @@ Oman</textarea>
 <div class="toast" id="toast"></div>
 
 <script>
+// شعار مطبعة النحوي مضمّن داخل الصفحة لتظهر الصورة فوراً حتى دون رفع ملف منفصل.
+const DEFAULT_LOGO = 'data:image/png;base64,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';
 // =============== STATE ===============
 let state = {
   docType: 'quotation', // 'quotation' or 'invoice'
   docNumber: '',
   docDate: '',
-  logo: '', // base64
+  logo: DEFAULT_LOGO, // default logo, user may upload a replacement
   from: { name: 'alnahwi printing', address: 'مسقط ,\nOman', phone: '91773059' },
   to: { name: '', info: 'Oman', logo: '' },
   items: [],
@@ -923,7 +925,7 @@ let state = {
 // =============== STORAGE ===============
 const LS_KEYS = {
   COUNTERS: 'alnahwi_counters',
-  LOGO: 'alnahwi_logo',
+  LOGO: 'alnahwi_logo_v2',
   HISTORY: 'alnahwi_history',
   FROM: 'alnahwi_from',
   COLOR: 'alnahwi_color',
@@ -1221,7 +1223,7 @@ function render() {
     ` : ''}
 
     <div class="footer-bar">
-      ${state.from.name} ${state.from.phone ? '• ' + escapeHtml(state.from.phone) : ''}
+      ${escapeHtml(state.from.name)} ${state.from.phone ? '• ' + escapeHtml(state.from.phone) : ''}
     </div>
   `;
   requestAnimationFrame(fitInvoicePreview);
@@ -1243,7 +1245,8 @@ function uploadLogo(e) {
 function removeLogo() {
   state.logo = '';
   localStorage.removeItem(LS_KEYS.LOGO);
-  document.getElementById('logoPreview').innerHTML = 'شعار';
+  state.logo = DEFAULT_LOGO;
+  document.getElementById('logoPreview').innerHTML = `<img src="${DEFAULT_LOGO}" alt="شعار مطبعة النحوي">`;
   document.getElementById('logoInput').value = '';
   render();
 }
@@ -1293,35 +1296,63 @@ async function savePDF() {
     if (!canvas.width || !canvas.height) throw new Error('لم تنجح عملية تصوير الفاتورة.');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
-    const pageWidth = 210, pageHeight = 297;
+    const pageWidth = 210, pageHeight = 297; // exact A4 dimensions, in millimetres
+    // html2canvas raster height can exceed A4 by 1-2 pixels due to CSS rounding.
+    // For short invoices we keep a SINGLE A4 page, with up to 2.5% fitting tolerance.
     const maxSlicePx = Math.floor(canvas.width * pageHeight / pageWidth);
-
-    // Prefer page breaks BETWEEN line items and major blocks to avoid cut text.
-    const rect = el.getBoundingClientRect();
-    const boundaryEls = el.querySelectorAll('tbody tr, .doc-header, .parties, .totals, .notes, .bank-section, .footer-bar');
-    const previewScale = rect.width / 794 || 1;
-    const stops = [...boundaryEls].map(node => Math.round(((node.getBoundingClientRect().bottom - rect.top) / previewScale) * canvas.width / 794))
-      .filter(v => v > 0 && v <= canvas.height).sort((a,b)=>a-b);
-    let startY = 0;
-    let page = 0;
-    while (startY < canvas.height - 2) {
-      const remaining = canvas.height - startY;
-      let endY = Math.min(startY + maxSlicePx, canvas.height);
-      if (endY < canvas.height) {
-        const safe = stops.filter(v => v > startY + maxSlicePx * .55 && v <= endY - 16);
-        if (safe.length) endY = safe[safe.length - 1];
+    // Ignore trailing white space caused by a preview's minimum height or layout.
+    const pixels = canvas.getContext('2d', {willReadFrequently:true});
+    let visibleBottom = canvas.height;
+    try {
+      const data = pixels.getImageData(0,0,canvas.width,canvas.height).data;
+      const step = 4;
+      for (let y=canvas.height-1; y>=0; y--) {
+        let ink=false;
+        for(let x=0;x<canvas.width;x+=step){
+          const k=(y*canvas.width+x)*4;
+          if(data[k]<244 || data[k+1]<244 || data[k+2]<244){ink=true;break;}
+        }
+        if(ink){visibleBottom=y+1;break;}
       }
-      if (endY <= startY) endY = Math.min(startY + maxSlicePx,canvas.height);
-      const slice = document.createElement('canvas');
-      slice.width = canvas.width;
-      slice.height = endY - startY;
-      const ctx = slice.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,slice.width,slice.height);
-      ctx.drawImage(canvas,0,startY,canvas.width,slice.height,0,0,slice.width,slice.height);
-      if (page++) pdf.addPage();
-      pdf.addImage(slice.toDataURL('image/jpeg',.94),'JPEG',0,0,pageWidth,Math.min(pageHeight,slice.height * pageWidth / canvas.width));
-      startY = endY;
-      if (page > 60) throw new Error('الفاتورة طويلة جداً؛ قلل عدد البنود وحاول مرة أخرى.');
+    } catch(e) { console.warn('PDF whitespace check:',e); }
+    const effectiveHeight = Math.min(canvas.height, visibleBottom + Math.round(canvas.width*8/210));
+    const almostOnePage = effectiveHeight <= maxSlicePx * 1.025;
+    if (almostOnePage) {
+      // Always produce precisely one A4 PDF page for a short quotation/invoice.
+      const single = document.createElement('canvas');
+      single.width=canvas.width; single.height=Math.min(canvas.height,effectiveHeight);
+      single.getContext('2d').drawImage(canvas,0,0,single.width,single.height,0,0,single.width,single.height);
+      const pdfHeight = Math.min(pageHeight, single.height * pageWidth / single.width);
+      pdf.addImage(single.toDataURL('image/jpeg', .94), 'JPEG', 0, 0, pageWidth, pdfHeight);
+    } else {
+      // Long invoice: split content into multiple A4 sheets at safe row/block boundaries.
+      const rect = el.getBoundingClientRect();
+      const boundaryEls = el.querySelectorAll('tbody tr, .doc-header, .parties, .totals, .notes, .bank-section, .footer-bar');
+      const previewScale = rect.width / 794 || 1;
+      const stops = [...boundaryEls]
+        .map(node => Math.round(((node.getBoundingClientRect().bottom - rect.top) / previewScale) * canvas.width / 794))
+        .filter(v => v > 0 && v <= canvas.height).sort((a,b)=>a-b);
+      let startY = 0;
+      let page = 0;
+      while (startY < effectiveHeight - 2) {
+        let endY = Math.min(startY + maxSlicePx, effectiveHeight);
+        if (endY < effectiveHeight) {
+          const safe = stops.filter(v => v > startY + maxSlicePx * .55 && v <= endY - 16);
+          if (safe.length) endY = safe[safe.length - 1];
+        }
+        if (endY <= startY) endY = Math.min(startY + maxSlicePx, effectiveHeight);
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = endY - startY;
+        const ctx = slice.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,slice.width,slice.height);
+        ctx.drawImage(canvas,0,startY,canvas.width,slice.height,0,0,slice.width,slice.height);
+        if (page++) pdf.addPage();
+        pdf.addImage(slice.toDataURL('image/jpeg',.94), 'JPEG',0,0,pageWidth,
+          Math.min(pageHeight, slice.height * pageWidth / canvas.width));
+        startY = endY;
+        if (page > 60) throw new Error('الفاتورة طويلة جداً؛ قلل عدد البنود وحاول مرة أخرى.');
+      }
     }
     const safeName = (state.to.name || 'customer').replace(/[\\/:*?"<>|]/g,'_').slice(0,45);
     const docNo = (state.docNumber || 'document').replace(/[\\/:*?"<>|]/g,'_');
@@ -1433,9 +1464,7 @@ function applyStateToForm() {
     s.classList.toggle('active', s.dataset.color === state.color);
   });
   applyColor();
-  if (state.logo) {
-    document.getElementById('logoPreview').innerHTML = `<img src="${state.logo}">`;
-  }
+  document.getElementById('logoPreview').innerHTML = `<img src="${state.logo || DEFAULT_LOGO}" alt="شعار مطبعة النحوي">`;
   const customerLogoEl = document.getElementById('customerLogoPreview');
   if (state.to.logo) {
     customerLogoEl.innerHTML = `<img src="${state.to.logo}">`;
@@ -1454,7 +1483,7 @@ function newDocument() {
     docType: state.docType,
     docNumber: getNextNumber(state.docType),
     docDate: new Date().toISOString().split('T')[0],
-    logo: localStorage.getItem(LS_KEYS.LOGO) || '',
+    logo: localStorage.getItem(LS_KEYS.LOGO) || DEFAULT_LOGO,
     from: savedFrom,
     to: { name: '', info: 'Oman', logo: '' },
     items: [{ name: '', desc: '', qty: 1, rate: 0, image: '' }],
@@ -1499,10 +1528,8 @@ if (document.fonts?.ready) document.fonts.ready.then(fitInvoicePreview);
 function init() {
   // Restore logo
   const savedLogo = localStorage.getItem(LS_KEYS.LOGO);
-  if (savedLogo) {
-    state.logo = savedLogo;
-    document.getElementById('logoPreview').innerHTML = `<img src="${savedLogo}">`;
-  }
+  state.logo = savedLogo || DEFAULT_LOGO;
+  document.getElementById('logoPreview').innerHTML = `<img src="${state.logo}" alt="شعار مطبعة النحوي">`;
   // Defaults version — bump this when changing hardcoded defaults to force-refresh
   const DEFAULTS_VERSION = 'v2-91773059';
   const savedVersion = localStorage.getItem('alnahwi_defaults_version');
