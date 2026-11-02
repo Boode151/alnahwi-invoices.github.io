@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مطبعة النحوي — فواتير و عروض أسعار</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Cairo', 'Inter', sans-serif;
+    background: #f3f4f6;
+    color: #111;
+    min-height: 100vh;
+  }
+  .app { display: grid; grid-template-columns: 380px 1fr; min-height: 100vh; }
+
+  /* ===== Sidebar / Controls ===== */
+  .sidebar {
+    background: #fff;
+    border-left: 1px solid #e5e7eb;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+  .sidebar h2 {
+    font-size: 18px;
+    color: #6d28d9;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ede9fe;
+  }
+  .doc-type {
+    display: flex;
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+  }
+  .doc-type button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 14px;
+  }
+  .doc-type button.active {
+    background: #6d28d9;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(109,40,217,0.3);
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 6px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    background: #fff;
+    transition: border 0.15s, box-shadow 0.15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline: none;
+    border-color: #6d28d9;
+    box-shadow: 0 0 0 3px rgba(109,40,217,0.15);
+  }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .section {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: #fafafa;
+  }
+  .section h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6d28d9;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .items-list { display: flex; flex-direction: column; gap: 10px; }
+  .item-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    position: relative;
+  }
+  .item-card .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .item-card input, .item-card textarea {
+    padding: 6px 8px;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    width: 100%;
+    font-family: inherit;
+  }
+  .item-card textarea { min-height: 40px; resize: vertical; }
+  .item-card .del {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .item-card .del:hover { background: #fecaca; }
+  .item-card .img-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .item-card .img-thumb {
+    width: 50px;
+    height: 50px;
+    border: 1px dashed #c4b5fd;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 18px;
+    overflow: hidden;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .item-card .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .item-card .img-row label {
+    flex: 1;
+    padding: 6px;
+    background: #ede9fe;
+    color: #6d28d9;
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .item-card .img-row label:hover { background: #ddd6fe; }
+  .item-card .img-row input[type="file"] { display: none; }
+  .item-card .img-row .img-del {
+    padding: 5px 8px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: #6d28d9; color: #fff; width: 100%; }
+  .btn-primary:hover { background: #5b21b6; }
+  .btn-secondary {
+    background: #ede9fe;
+    color: #6d28d9;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .btn-secondary:hover { background: #ddd6fe; }
+  .btn-ghost {
+    background: transparent;
+    color: #6d28d9;
+    border: 1px dashed #c4b5fd;
+    width: 100%;
+  }
+  .btn-ghost:hover { background: #f5f3ff; }
+
+  .actions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 12px 0 0;
+    margin-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .logo-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-upload .logo-preview {
+    width: 60px;
+    height: 60px;
+    border: 1px dashed #c4b5fd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 11px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .logo-upload .logo-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .logo-upload label {
+    flex: 1;
+    padding: 8px;
+    background: #ede9fe;
+    color: #6d28d9;
+    border-radius: 6px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .logo-upload label:hover { background: #ddd6fe; }
+  .logo-upload input[type="file"] { display: none; }
+
+  .color-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #d1d5db;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .color-swatch:hover { transform: scale(1.1); }
+  .color-swatch.active {
+    box-shadow: 0 0 0 2px #111;
+    transform: scale(1.1);
+  }
+  .color-row input[type="color"] {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+  }
+  .color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  .color-row input[type="color"]::-webkit-color-swatch { border: 2px dashed #c4b5fd; border-radius: 50%; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .toggle-row label { font-size: 13px; font-weight: 600; color: #4b5563; }
+  .switch {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    background: #d1d5db;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .switch.on { background: #6d28d9; }
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .switch.on::after { transform: translateX(-18px); }
+  .bank-fields { display: none; }
+  .bank-fields.show { display: block; }
+  .logo-upload button {
+    padding: 6px 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  /* ===== Preview / Document ===== */
+  .preview-wrap {
+    padding: 30px;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+  .preview-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 20px;
+  }
+  .preview-controls h1 {
+    font-size: 16px;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .preview-controls .small-btn {
+    padding: 8px 14px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .preview-controls .small-btn:hover { background: #f9fafb; }
+
+  /* The actual document — rendered LTR like the template */
+  .document {
+    --doc-color: #6d28d9;
+    --doc-color-light: #f5f3ff;
+    background: #fff;
+    width: 800px;
+    margin: 0 auto;
+    padding: 50px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    direction: ltr;
+    font-family: 'Inter', 'Cairo', sans-serif;
+    color: #1f2937;
+  }
+  .doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+  }
+  .doc-title-block h1 {
+    font-size: 38px;
+    color: var(--doc-color);
+    font-weight: 800;
+    margin-bottom: 12px;
+  }
+  .doc-meta { font-size: 14px; line-height: 1.8; color: #4b5563; }
+  .doc-meta strong { color: #111; margin-right: 8px; min-width: 110px; display: inline-block; }
+  .doc-logo {
+    width: 140px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .doc-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .doc-logo.empty { color: #d1d5db; font-size: 12px; border: 1px dashed #e5e7eb; border-radius: 8px; }
+
+  .parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .party {
+    background: var(--doc-color-light);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .party h3 {
+    color: var(--doc-color);
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .party-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .party-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .party-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .party .name { font-weight: 700; color: #111; margin-bottom: 4px; font-size: 15px; }
+  .party .info { color: #4b5563; font-size: 13px; line-height: 1.6; white-space: pre-line; }
+
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  table.items thead {
+    background: var(--doc-color);
+    color: #fff;
+  }
+  table.items th {
+    padding: 14px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  table.items th:first-child { padding-left: 18px; border-radius: 6px 0 0 6px; width: 40px; }
+  table.items th:last-child { text-align: right; padding-right: 18px; border-radius: 0 6px 6px 0; }
+  table.items th.center { text-align: center; }
+
+  table.items td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+    vertical-align: top;
+  }
+  table.items tbody tr:nth-child(even) { background: #f9fafb; }
+  table.items td:first-child { padding-left: 18px; color: #6b7280; width: 40px; }
+  table.items td:last-child { text-align: right; padding-right: 18px; font-weight: 600; }
+  table.items td.center { text-align: center; }
+  .item-name { font-weight: 500; color: #111; }
+  .item-with-img {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .item-img-cell {
+    width: 70px;
+    height: 70px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  .item-img-cell img { width: 100%; height: 100%; object-fit: cover; }
+  .item-text-cell { flex: 1; }
+  .item-desc {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #4b5563;
+    white-space: pre-line;
+    line-height: 1.7;
+  }
+  /* Auto RTL detection for Arabic text */
+  .rtl-aware { unicode-bidi: plaintext; }
+
+  .totals {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .totals-table {
+    min-width: 320px;
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 18px;
+    font-size: 14px;
+    color: #4b5563;
+  }
+  .totals-row.total {
+    border-top: 2px solid #111;
+    font-size: 22px;
+    font-weight: 700;
+    color: #111;
+    padding: 14px 18px;
+    margin-top: 6px;
+  }
+
+  .notes {
+    margin-top: 30px;
+    padding-top: 18px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .notes h4 {
+    color: var(--doc-color);
+    font-size: 14px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .bank-section {
+    margin-top: 25px;
+    padding: 18px;
+    background: var(--doc-color-light);
+    border-radius: 10px;
+    border-right: 4px solid var(--doc-color);
+  }
+  .bank-section h4 {
+    color: var(--doc-color);
+    font-size: 15px;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .bank-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+    font-size: 13px;
+  }
+  .bank-grid .label { color: #6b7280; font-weight: 600; }
+  .bank-grid .value { color: #111; font-weight: 500; }
+  .notes p {
+    color: #4b5563;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  .footer-bar {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12px;
+  }
+
+  /* History modal */
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: #fff;
+    width: 600px;
+    max-height: 80vh;
+    border-radius: 12px;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .modal h2 { color: #6d28d9; margin-bottom: 16px; font-size: 20px; }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .history-item .info { font-size: 13px; }
+  .history-item .info .num { font-weight: 700; color: #6d28d9; }
+  .history-item button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    margin-right: 4px;
+    font-size: 12px;
+  }
+  .history-item .load-btn { background: #ede9fe; color: #6d28d9; }
+  .history-item .del-btn { background: #fee2e2; color: #b91c1c; }
+  .modal .close-btn {
+    width: 100%;
+    padding: 10px;
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 12px;
+    font-family: inherit;
+    font-weight: 600;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #111;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: transform 0.3s;
+    z-index: 2000;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Print */
+  @media print {
+    .sidebar, .preview-controls { display: none !important; }
+    .preview-wrap { padding: 0; max-height: none; overflow: visible; }
+    .document { box-shadow: none; margin: 0; padding: 30px; width: 100%; }
+    .app { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { max-height: none; }
+    .document { width: 100%; padding: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <div class="sidebar">
+    <h2>إنشاء مستند</h2>
+
+    <!-- Doc type toggle -->
+    <div class="doc-type">
+      <button id="btnQuotation" class="active" onclick="setDocType('quotation')">عرض سعر</button>
+      <button id="btnInvoice" onclick="setDocType('invoice')">فاتورة</button>
+    </div>
+
+    <!-- Color theme -->
+    <div class="section">
+      <h3>لون المستند</h3>
+      <div class="color-row" id="colorRow">
+        <div class="color-swatch active" style="background:#6d28d9" data-color="#6d28d9" data-light="#f5f3ff" onclick="setColor('#6d28d9','#f5f3ff',this)" title="بنفسجي"></div>
+        <div class="color-swatch" style="background:#2563eb" data-color="#2563eb" data-light="#eff6ff" onclick="setColor('#2563eb','#eff6ff',this)" title="أزرق"></div>
+        <div class="color-swatch" style="background:#059669" data-color="#059669" data-light="#ecfdf5" onclick="setColor('#059669','#ecfdf5',this)" title="أخضر"></div>
+        <div class="color-swatch" style="background:#dc2626" data-color="#dc2626" data-light="#fef2f2" onclick="setColor('#dc2626','#fef2f2',this)" title="أحمر"></div>
+        <div class="color-swatch" style="background:#ea580c" data-color="#ea580c" data-light="#fff7ed" onclick="setColor('#ea580c','#fff7ed',this)" title="برتقالي"></div>
+        <div class="color-swatch" style="background:#0d9488" data-color="#0d9488" data-light="#f0fdfa" onclick="setColor('#0d9488','#f0fdfa',this)" title="فيروزي"></div>
+        <div class="color-swatch" style="background:#db2777" data-color="#db2777" data-light="#fdf2f8" onclick="setColor('#db2777','#fdf2f8',this)" title="وردي"></div>
+        <div class="color-swatch" style="background:#111111" data-color="#111111" data-light="#f9fafb" onclick="setColor('#111111','#f9fafb',this)" title="أسود"></div>
+        <input type="color" id="customColor" onchange="setCustomColor(this.value)" title="لون مخصص">
+      </div>
+    </div>
+
+    <!-- Logo -->
+    <div class="section">
+      <h3>الشعار</h3>
+      <div class="logo-upload">
+        <div class="logo-preview" id="logoPreview">شعار</div>
+        <label for="logoInput">رفع شعار</label>
+        <input type="file" id="logoInput" accept="image/*" onchange="uploadLogo(event)">
+        <button onclick="removeLogo()" title="حذف">✕</button>
+      </div>
+    </div>
+
+    <!-- Document info -->
+    <div class="section">
+      <h3>معلومات المستند</h3>
+      <div class="row2">
+        <div class="field">
+          <label>الرقم</label>
+          <input type="text" id="docNumber" oninput="render()">
+        </div>
+        <div class="field">
+          <label>التاريخ</label>
+          <input type="date" id="docDate" oninput="render()">
+        </div>
+      </div>
+    </div>
+
+    <!-- From -->
+    <div class="section">
+      <h3>من (المطبعة)</h3>
+      <div class="field">
+        <label>الاسم</label>
+        <input type="text" id="fromName" value="alnahwi printing" oninput="render()">
+      </div>
+      <div class="field">
+        <label>العنوان</label>
+        <textarea id="fromAddress" oninput="render()">مسقط ,
+Oman</textarea>
+      </div>
+      <div class="field">
+        <label>الهاتف (اختياري)</label>
+        <input type="text" id="fromPhone" oninput="render()">
+      </div>
+    </div>
+
+    <!-- To -->
+    <div class="section">
+      <h3>إلى (العميل)</h3>
+      <div class="field">
+        <label>اسم العميل أو رقمه</label>
+        <input type="text" id="toName" placeholder="مثال: 94427726 أو محمد" oninput="render()">
+      </div>
+      <div class="field">
+        <label>تفاصيل إضافية (اختياري)</label>
+        <textarea id="toInfo" placeholder="Oman" oninput="render()">Oman</textarea>
+      </div>
+      <div class="field">
+        <label>شعار العميل (اختياري)</label>
+        <div class="logo-upload">
+          <div class="logo-preview" id="customerLogoPreview">شعار</div>
+          <label for="customerLogoInput">رفع شعار</label>
+          <input type="file" id="customerLogoInput" accept="image/*" onchange="uploadCustomerLogo(event)">
+          <button onclick="removeCustomerLogo()" title="حذف">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="section">
+      <h3>المنتجات / البنود</h3>
+      <div class="items-list" id="itemsList"></div>
+      <button class="btn btn-ghost" onclick="addItem()" style="margin-top:10px">+ إضافة بند</button>
+    </div>
+
+    <!-- Extras -->
+    <div class="section">
+      <h3>إضافات</h3>
+      <div class="row2">
+        <div class="field">
+          <label>العملة</label>
+          <select id="currency" onchange="render()">
+            <option value="OMR">OMR (ريال عماني)</option>
+            <option value="AED">AED (درهم)</option>
+            <option value="SAR">SAR (ريال سعودي)</option>
+            <option value="USD">USD (دولار)</option>
+            <option value="EUR">EUR (يورو)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>الخصم (%)</label>
+          <input type="number" id="discount" value="0" min="0" max="100" step="0.01" oninput="render()">
+        </div>
+      </div>
+      <div class="field">
+        <label>ضريبة القيمة المضافة (%)</label>
+        <input type="number" id="vat" value="0" min="0" step="0.01" oninput="render()">
+      </div>
+      <div class="field">
+        <label>ملاحظات / شروط</label>
+        <textarea id="notes" placeholder="مثال: الدفع خلال 7 أيام" oninput="render()"></textarea>
+      </div>
+    </div>
+
+    <!-- Bank details -->
+    <div class="section">
+      <div class="toggle-row">
+        <label>إظهار تفاصيل البنك</label>
+        <div class="switch" id="bankSwitch" onclick="toggleBank()"></div>
+      </div>
+      <div class="bank-fields" id="bankFields">
+        <div class="field">
+          <label>اسم البنك</label>
+          <input type="text" id="bankName" oninput="render()">
+        </div>
+        <div class="field">
+          <label>اسم صاحب الحساب</label>
+          <input type="text" id="bankHolder" oninput="render()">
+        </div>
+        <div class="field">
+          <label>رقم الحساب</label>
+          <input type="text" id="bankAccount" oninput="render()">
+        </div>
+        <div class="field">
+          <label>هاتف التحويل السريع</label>
+          <input type="text" id="bankPhone" oninput="render()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn btn-primary" onclick="savePDF()">💾 حفظ كـ PDF</button>
+      <button class="btn btn-secondary" onclick="saveDocument()">📁 حفظ في السجل</button>
+      <button class="btn btn-secondary" onclick="openHistory()">📋 السجل</button>
+      <button class="btn btn-ghost" onclick="newDocument()">🆕 مستند جديد</button>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW ============ -->
+  <div class="preview-wrap">
+    <div class="preview-controls">
+      <h1>معاينة المستند</h1>
+      <div>
+        <button class="small-btn" onclick="window.print()">🖨️ طباعة</button>
+      </div>
+    </div>
+
+    <div class="document" id="documentPreview">
+      <!-- Rendered dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- History modal -->
+<div class="modal-bg" id="historyModal">
+  <div class="modal">
+    <h2>📋 سجل المستندات</h2>
+    <div id="historyList"></div>
+    <button class="close-btn" onclick="closeHistory()">إغلاق</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =============== STATE ===============
+let state = {
+  docType: 'quotation', // 'quotation' or 'invoice'
+  docNumber: '',
+  docDate: '',
+  logo: '', // base64
+  from: { name: 'alnahwi printing', address: 'مسقط ,\nOman', phone: '91773059' },
+  to: { name: '', info: 'Oman', logo: '' },
+  items: [],
+  currency: 'OMR',
+  discount: 0,
+  vat: 0,
+  notes: '',
+  color: '#6d28d9',
+  colorLight: '#f5f3ff',
+  showBank: true,
+  bank: {
+    name: 'bank muscat',
+    holder: 'ABDULLAH ALNAHWI',
+    account: '0369058161080014',
+    phone: '79294510'
+  }
+};
+
+// =============== STORAGE ===============
+const LS_KEYS = {
+  COUNTERS: 'alnahwi_counters',
+  LOGO: 'alnahwi_logo',
+  HISTORY: 'alnahwi_history',
+  FROM: 'alnahwi_from',
+  COLOR: 'alnahwi_color',
+  BANK: 'alnahwi_bank'
+};
+
+// =============== COLOR ===============
+function setColor(main, light, el) {
+  state.color = main;
+  state.colorLight = light;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  localStorage.setItem(LS_KEYS.COLOR, JSON.stringify({ main, light }));
+  applyColor();
+  render();
+}
+function setCustomColor(hex) {
+  // Generate a light tint by mixing with white
+  const light = hexToLight(hex, 0.92);
+  setColor(hex, light, null);
+}
+function hexToLight(hex, ratio) {
+  hex = hex.replace('#', '');
+  const r = parseInt(hex.substring(0,2), 16);
+  const g = parseInt(hex.substring(2,4), 16);
+  const b = parseInt(hex.substring(4,6), 16);
+  const nr = Math.round(r + (255 - r) * ratio);
+  const ng = Math.round(g + (255 - g) * ratio);
+  const nb = Math.round(b + (255 - b) * ratio);
+  return '#' + [nr, ng, nb].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function applyColor() {
+  const doc = document.getElementById('documentPreview');
+  doc.style.setProperty('--doc-color', state.color);
+  doc.style.setProperty('--doc-color-light', state.colorLight);
+}
+
+// =============== BANK ===============
+function toggleBank() {
+  state.showBank = !state.showBank;
+  document.getElementById('bankSwitch').classList.toggle('on', state.showBank);
+  document.getElementById('bankFields').classList.toggle('show', state.showBank);
+  render();
+}
+
+function getCounters() {
+  return JSON.parse(localStorage.getItem(LS_KEYS.COUNTERS) || '{"quotation": 124, "invoice": 0}');
+}
+function setCounters(c) {
+  localStorage.setItem(LS_KEYS.COUNTERS, JSON.stringify(c));
+}
+function getNextNumber(type) {
+  const c = getCounters();
+  const next = (c[type] || 0) + 1;
+  const prefix = type === 'quotation' ? 'A' : 'INV-';
+  return prefix + String(next).padStart(5, '0');
+}
+function incrementCounter(type) {
+  const c = getCounters();
+  c[type] = (c[type] || 0) + 1;
+  setCounters(c);
+}
+
+// =============== DOC TYPE ===============
+function setDocType(type) {
+  state.docType = type;
+  document.getElementById('btnQuotation').classList.toggle('active', type === 'quotation');
+  document.getElementById('btnInvoice').classList.toggle('active', type === 'invoice');
+  document.getElementById('docNumber').value = getNextNumber(type);
+  state.docNumber = document.getElementById('docNumber').value;
+  render();
+}
+
+// =============== ITEMS ===============
+function addItem() {
+  state.items.push({ name: '', desc: '', qty: 1, rate: 0, image: '' });
+  renderItems();
+  render();
+}
+function uploadItemImage(i, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.items[i].image = ev.target.result;
+    renderItems();
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+function removeItemImage(i) {
+  state.items[i].image = '';
+  renderItems();
+  render();
+}
+function removeItem(i) {
+  state.items.splice(i, 1);
+  renderItems();
+  render();
+}
+function updateItem(i, field, value) {
+  if (field === 'qty' || field === 'rate') value = parseFloat(value) || 0;
+  state.items[i][field] = value;
+  render();
+}
+function renderItems() {
+  const wrap = document.getElementById('itemsList');
+  wrap.innerHTML = '';
+  state.items.forEach((it, i) => {
+    const div = document.createElement('div');
+    div.className = 'item-card';
+    const imgId = `itemImg_${i}`;
+    div.innerHTML = `
+      <button class="del" onclick="removeItem(${i})" title="حذف">✕</button>
+      <input type="text" placeholder="اسم المنتج" value="${escapeHtml(it.name)}"
+             oninput="updateItem(${i}, 'name', this.value)">
+      <textarea placeholder="وصف إضافي (اختياري)"
+                oninput="updateItem(${i}, 'desc', this.value)">${escapeHtml(it.desc)}</textarea>
+      <div class="img-row">
+        <div class="img-thumb">${it.image ? `<img src="${it.image}">` : '🖼️'}</div>
+        <label for="${imgId}">${it.image ? 'تغيير الصورة' : '+ صورة المنتج'}</label>
+        <input type="file" id="${imgId}" accept="image/*" onchange="uploadItemImage(${i}, event)">
+        ${it.image ? `<button class="img-del" onclick="removeItemImage(${i})">حذف</button>` : ''}
+      </div>
+      <div class="row3">
+        <input type="number" step="0.01" placeholder="الكمية" value="${it.qty}"
+               oninput="updateItem(${i}, 'qty', this.value)">
+        <input type="number" step="0.001" placeholder="السعر" value="${it.rate}"
+               oninput="updateItem(${i}, 'rate', this.value)">
+        <input type="text" readonly value="${(it.qty * it.rate).toFixed(3)}" style="background:#f9fafb">
+      </div>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+// =============== RENDER PREVIEW ===============
+function escapeHtml(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function fmt(n) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+function gatherState() {
+  state.docNumber = document.getElementById('docNumber').value;
+  state.docDate = document.getElementById('docDate').value;
+  state.from.name = document.getElementById('fromName').value;
+  state.from.address = document.getElementById('fromAddress').value;
+  state.from.phone = document.getElementById('fromPhone').value;
+  state.to.name = document.getElementById('toName').value;
+  state.to.info = document.getElementById('toInfo').value;
+  state.currency = document.getElementById('currency').value;
+  state.discount = parseFloat(document.getElementById('discount').value) || 0;
+  state.vat = parseFloat(document.getElementById('vat').value) || 0;
+  state.notes = document.getElementById('notes').value;
+  state.bank.name = document.getElementById('bankName').value;
+  state.bank.holder = document.getElementById('bankHolder').value;
+  state.bank.account = document.getElementById('bankAccount').value;
+  state.bank.phone = document.getElementById('bankPhone').value;
+  // Save "from" and "bank" so user doesn't retype next time
+  localStorage.setItem(LS_KEYS.FROM, JSON.stringify(state.from));
+  localStorage.setItem(LS_KEYS.BANK, JSON.stringify(state.bank));
+}
+
+function calcTotals() {
+  const subtotal = state.items.reduce((s, it) => s + (it.qty * it.rate), 0);
+  const discountAmt = subtotal * (state.discount / 100);
+  const afterDiscount = subtotal - discountAmt;
+  const vatAmt = afterDiscount * (state.vat / 100);
+  const total = afterDiscount + vatAmt;
+  return { subtotal, discountAmt, afterDiscount, vatAmt, total };
+}
+
+function render() {
+  gatherState();
+  const t = calcTotals();
+  const cur = state.currency;
+  const title = state.docType === 'quotation' ? 'Quotation' : 'Invoice';
+  const numLabel = state.docType === 'quotation' ? 'Quotation No #' : 'Invoice No #';
+  const dateLabel = state.docType === 'quotation' ? 'Quotation Date' : 'Invoice Date';
+  const partyLabel = state.docType === 'quotation' ? 'Quotation For' : 'Bill To';
+
+  const dateStr = state.docDate
+    ? new Date(state.docDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+
+  let itemsRows = '';
+  state.items.forEach((it, i) => {
+    const itemContent = it.image
+      ? `<div class="item-with-img">
+           <div class="item-img-cell"><img src="${it.image}"></div>
+           <div class="item-text-cell">
+             <div class="item-name rtl-aware">${escapeHtml(it.name)}</div>
+             ${it.desc ? `<div class="item-desc rtl-aware">${escapeHtml(it.desc)}</div>` : ''}
+           </div>
+         </div>`
+      : `<div class="item-name rtl-aware">${escapeHtml(it.name)}</div>
+         ${it.desc ? `<div class="item-desc rtl-aware">${escapeHtml(it.desc)}</div>` : ''}`;
+    itemsRows += `
+      <tr>
+        <td>${i + 1}.</td>
+        <td>${itemContent}</td>
+        <td class="center">${it.qty}</td>
+        <td class="center">${cur} ${it.rate}</td>
+        <td>${cur} ${fmt(it.qty * it.rate)}</td>
+      </tr>
+    `;
+  });
+
+  const logoHtml = state.logo
+    ? `<div class="doc-logo"><img src="${state.logo}"></div>`
+    : `<div class="doc-logo empty">سيظهر الشعار هنا</div>`;
+
+  document.getElementById('documentPreview').innerHTML = `
+    <div class="doc-header">
+      <div class="doc-title-block">
+        <h1>${title}</h1>
+        <div class="doc-meta">
+          <div><strong>${numLabel}</strong>${escapeHtml(state.docNumber)}</div>
+          <div><strong>${dateLabel}</strong>${escapeHtml(dateStr)}</div>
+        </div>
+      </div>
+      ${logoHtml}
+    </div>
+
+    <div class="parties">
+      <div class="party">
+        <h3>${state.docType === 'quotation' ? 'Quotation From' : 'Invoice From'}</h3>
+        <div class="name rtl-aware">${escapeHtml(state.from.name)}</div>
+        <div class="info rtl-aware">${escapeHtml(state.from.address)}${state.from.phone ? '\n' + escapeHtml(state.from.phone) : ''}</div>
+      </div>
+      <div class="party">
+        <div class="party-header">
+          <div style="flex:1">
+            <h3>${partyLabel}</h3>
+            <div class="name rtl-aware">${escapeHtml(state.to.name) || '—'}</div>
+            <div class="info rtl-aware">${escapeHtml(state.to.info)}</div>
+          </div>
+          ${state.to.logo ? `<div class="party-logo"><img src="${state.to.logo}"></div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <table class="items">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Item</th>
+          <th class="center">Quantity</th>
+          <th class="center">Rate</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>${itemsRows || '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:30px">— لم تتم إضافة بنود بعد —</td></tr>'}</tbody>
+    </table>
+
+    <div class="totals">
+      <div class="totals-table">
+        ${(state.discount > 0 || state.vat > 0) ? `
+          <div class="totals-row"><span>Subtotal</span><span>${cur} ${fmt(t.subtotal)}</span></div>
+          ${state.discount > 0 ? `<div class="totals-row"><span>Discount (${state.discount}%)</span><span>− ${cur} ${fmt(t.discountAmt)}</span></div>` : ''}
+          ${state.vat > 0 ? `<div class="totals-row"><span>VAT (${state.vat}%)</span><span>${cur} ${fmt(t.vatAmt)}</span></div>` : ''}
+        ` : ''}
+        <div class="totals-row total">
+          <span>Total (${cur})</span>
+          <span>${cur} ${fmt(t.total)}</span>
+        </div>
+      </div>
+    </div>
+
+    ${state.notes ? `
+      <div class="notes">
+        <h4>Notes / ملاحظات</h4>
+        <p class="rtl-aware">${escapeHtml(state.notes)}</p>
+      </div>
+    ` : ''}
+
+    ${state.showBank ? `
+      <div class="bank-section">
+        <h4>Bank Details / تفاصيل البنك</h4>
+        <div class="bank-grid">
+          <div class="label">Bank / البنك</div>
+          <div class="value rtl-aware">${escapeHtml(state.bank.name)}</div>
+          <div class="label">Account Holder / صاحب الحساب</div>
+          <div class="value rtl-aware">${escapeHtml(state.bank.holder)}</div>
+          <div class="label">Account No. / رقم الحساب</div>
+          <div class="value">${escapeHtml(state.bank.account)}</div>
+          <div class="label">Quick Transfer / التحويل السريع</div>
+          <div class="value">${escapeHtml(state.bank.phone)}</div>
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="footer-bar">
+      ${state.from.name} ${state.from.phone ? '• ' + escapeHtml(state.from.phone) : ''}
+    </div>
+  `;
+}
+
+// =============== LOGO ===============
+function uploadLogo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.logo = ev.target.result;
+    localStorage.setItem(LS_KEYS.LOGO, state.logo);
+    document.getElementById('logoPreview').innerHTML = `<img src="${state.logo}">`;
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo() {
+  state.logo = '';
+  localStorage.removeItem(LS_KEYS.LOGO);
+  document.getElementById('logoPreview').innerHTML = 'شعار';
+  document.getElementById('logoInput').value = '';
+  render();
+}
+function uploadCustomerLogo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.to.logo = ev.target.result;
+    document.getElementById('customerLogoPreview').innerHTML = `<img src="${state.to.logo}">`;
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+function removeCustomerLogo() {
+  state.to.logo = '';
+  document.getElementById('customerLogoPreview').innerHTML = 'شعار';
+  document.getElementById('customerLogoInput').value = '';
+  render();
+}
+
+// =============== PDF ===============
+async function savePDF() {
+  if (!state.to.name) {
+    if (!confirm('لم تدخل اسم العميل. هل تريد المتابعة؟')) return;
+  }
+  toast('جاري إنشاء PDF...');
+  const el = document.getElementById('documentPreview');
+  // Render at higher resolution
+  const canvas = await html2canvas(el, {
+    scale: 2,
+    backgroundColor: '#ffffff',
+    useCORS: true
+  });
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  if (imgHeight <= pageHeight) {
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+  } else {
+    // Multi-page
+    let position = 0;
+    let remaining = imgHeight;
+    while (remaining > 0) {
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      remaining -= pageHeight;
+      if (remaining > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+      }
+    }
+  }
+
+  const safeName = (state.to.name || 'customer').replace(/[\\/:*?"<>|]/g, '_');
+  const typeLabel = state.docType === 'quotation' ? 'quotation' : 'invoice';
+  const filename = `${typeLabel}-${state.docNumber}-${safeName}.pdf`;
+  pdf.save(filename);
+  toast('✅ تم حفظ الملف: ' + filename);
+
+  // Auto-increment counter & save to history after first PDF for this number
+  const counters = getCounters();
+  const numericPart = parseInt(state.docNumber.replace(/\D/g, ''), 10);
+  if (numericPart > (counters[state.docType] || 0)) {
+    counters[state.docType] = numericPart;
+    setCounters(counters);
+  }
+  saveDocument(true);
+}
+
+// =============== HISTORY ===============
+function getHistory() {
+  return JSON.parse(localStorage.getItem(LS_KEYS.HISTORY) || '[]');
+}
+function saveDocument(silent) {
+  gatherState();
+  const history = getHistory();
+  // Replace if same docNumber+type exists
+  const idx = history.findIndex(h => h.docNumber === state.docNumber && h.docType === state.docType);
+  const entry = {
+    ...JSON.parse(JSON.stringify(state)),
+    savedAt: new Date().toISOString()
+  };
+  if (idx >= 0) history[idx] = entry;
+  else history.unshift(entry);
+  // Keep last 100
+  localStorage.setItem(LS_KEYS.HISTORY, JSON.stringify(history.slice(0, 100)));
+  if (!silent) toast('✅ تم الحفظ في السجل');
+}
+function openHistory() {
+  const list = document.getElementById('historyList');
+  const history = getHistory();
+  if (!history.length) {
+    list.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:20px">لا توجد مستندات محفوظة</p>';
+  } else {
+    list.innerHTML = history.map((h, i) => `
+      <div class="history-item">
+        <div class="info">
+          <div><span class="num">${escapeHtml(h.docNumber)}</span> — ${h.docType === 'quotation' ? 'عرض سعر' : 'فاتورة'}</div>
+          <div style="color:#6b7280;margin-top:2px">${escapeHtml(h.to.name || '—')} • ${new Date(h.savedAt).toLocaleString('en-GB')}</div>
+        </div>
+        <div>
+          <button class="load-btn" onclick="loadDocument(${i})">فتح</button>
+          <button class="del-btn" onclick="deleteDocument(${i})">حذف</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('historyModal').classList.add('show');
+}
+function closeHistory() {
+  document.getElementById('historyModal').classList.remove('show');
+}
+function loadDocument(i) {
+  const history = getHistory();
+  const h = history[i];
+  if (!h) return;
+  state = JSON.parse(JSON.stringify(h));
+  applyStateToForm();
+  closeHistory();
+  toast('✅ تم تحميل المستند');
+}
+function deleteDocument(i) {
+  if (!confirm('هل أنت متأكد من حذف هذا المستند من السجل؟')) return;
+  const history = getHistory();
+  history.splice(i, 1);
+  localStorage.setItem(LS_KEYS.HISTORY, JSON.stringify(history));
+  openHistory();
+}
+
+// =============== APPLY STATE TO FORM ===============
+function applyStateToForm() {
+  document.getElementById('btnQuotation').classList.toggle('active', state.docType === 'quotation');
+  document.getElementById('btnInvoice').classList.toggle('active', state.docType === 'invoice');
+  document.getElementById('docNumber').value = state.docNumber;
+  document.getElementById('docDate').value = state.docDate;
+  document.getElementById('fromName').value = state.from.name;
+  document.getElementById('fromAddress').value = state.from.address;
+  document.getElementById('fromPhone').value = state.from.phone || '';
+  document.getElementById('toName').value = state.to.name || '';
+  document.getElementById('toInfo').value = state.to.info || '';
+  document.getElementById('currency').value = state.currency;
+  document.getElementById('discount').value = state.discount;
+  document.getElementById('vat').value = state.vat;
+  document.getElementById('notes').value = state.notes || '';
+  document.getElementById('bankName').value = state.bank.name || '';
+  document.getElementById('bankHolder').value = state.bank.holder || '';
+  document.getElementById('bankAccount').value = state.bank.account || '';
+  document.getElementById('bankPhone').value = state.bank.phone || '';
+  document.getElementById('bankSwitch').classList.toggle('on', state.showBank);
+  document.getElementById('bankFields').classList.toggle('show', state.showBank);
+  // Update color swatches
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === state.color);
+  });
+  applyColor();
+  if (state.logo) {
+    document.getElementById('logoPreview').innerHTML = `<img src="${state.logo}">`;
+  }
+  const customerLogoEl = document.getElementById('customerLogoPreview');
+  if (state.to.logo) {
+    customerLogoEl.innerHTML = `<img src="${state.to.logo}">`;
+  } else {
+    customerLogoEl.innerHTML = 'شعار';
+  }
+  renderItems();
+  render();
+}
+
+// =============== NEW DOC ===============
+function newDocument() {
+  if (state.items.length && !confirm('هل تريد البدء بمستند جديد؟ المستند الحالي لن يُحذف من السجل إذا كان محفوظاً.')) return;
+  const savedFrom = JSON.parse(localStorage.getItem(LS_KEYS.FROM) || 'null') || state.from;
+  state = {
+    docType: state.docType,
+    docNumber: getNextNumber(state.docType),
+    docDate: new Date().toISOString().split('T')[0],
+    logo: localStorage.getItem(LS_KEYS.LOGO) || '',
+    from: savedFrom,
+    to: { name: '', info: 'Oman', logo: '' },
+    items: [{ name: '', desc: '', qty: 1, rate: 0, image: '' }],
+    bank: state.bank,
+    showBank: state.showBank,
+    color: state.color,
+    colorLight: state.colorLight,
+    currency: 'OMR',
+    discount: 0,
+    vat: 0,
+    notes: ''
+  };
+  applyStateToForm();
+}
+
+// =============== TOAST ===============
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// =============== INIT ===============
+function init() {
+  // Restore logo
+  const savedLogo = localStorage.getItem(LS_KEYS.LOGO);
+  if (savedLogo) {
+    state.logo = savedLogo;
+    document.getElementById('logoPreview').innerHTML = `<img src="${savedLogo}">`;
+  }
+  // Defaults version — bump this when changing hardcoded defaults to force-refresh
+  const DEFAULTS_VERSION = 'v2-91773059';
+  const savedVersion = localStorage.getItem('alnahwi_defaults_version');
+  if (savedVersion !== DEFAULTS_VERSION) {
+    // Clear old saved from/bank so new defaults take over
+    localStorage.removeItem(LS_KEYS.FROM);
+    localStorage.removeItem(LS_KEYS.BANK);
+    localStorage.setItem('alnahwi_defaults_version', DEFAULTS_VERSION);
+  }
+  // Restore "from" — merge with defaults so empty fields stay filled
+  const savedFrom = JSON.parse(localStorage.getItem(LS_KEYS.FROM) || 'null');
+  if (savedFrom) {
+    state.from = {
+      name: savedFrom.name || state.from.name,
+      address: savedFrom.address || state.from.address,
+      phone: savedFrom.phone || state.from.phone
+    };
+  }
+  // Restore bank — merge with defaults
+  const savedBank = JSON.parse(localStorage.getItem(LS_KEYS.BANK) || 'null');
+  if (savedBank) {
+    state.bank = {
+      name: savedBank.name || state.bank.name,
+      holder: savedBank.holder || state.bank.holder,
+      account: savedBank.account || state.bank.account,
+      phone: savedBank.phone || state.bank.phone
+    };
+  }
+  // Apply switch state
+  document.getElementById('bankSwitch').classList.toggle('on', state.showBank);
+  document.getElementById('bankFields').classList.toggle('show', state.showBank);
+  // Restore color
+  const savedColor = JSON.parse(localStorage.getItem(LS_KEYS.COLOR) || 'null');
+  if (savedColor) {
+    state.color = savedColor.main;
+    state.colorLight = savedColor.light;
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.toggle('active', s.dataset.color === state.color);
+    });
+    document.getElementById('customColor').value = state.color;
+  }
+  applyColor();
+
+  document.getElementById('fromName').value = state.from.name;
+  document.getElementById('fromAddress').value = state.from.address;
+  document.getElementById('fromPhone').value = state.from.phone || '';
+  document.getElementById('bankName').value = state.bank.name;
+  document.getElementById('bankHolder').value = state.bank.holder;
+  document.getElementById('bankAccount').value = state.bank.account;
+  document.getElementById('bankPhone').value = state.bank.phone;
+  document.getElementById('bankSwitch').classList.toggle('on', state.showBank);
+  document.getElementById('bankFields').classList.toggle('show', state.showBank);
+
+  // Set today's date
+  document.getElementById('docDate').value = new Date().toISOString().split('T')[0];
+  state.docDate = document.getElementById('docDate').value;
+
+  // Set initial doc number
+  document.getElementById('docNumber').value = getNextNumber('quotation');
+  state.docNumber = document.getElementById('docNumber').value;
+
+  // Add one default item
+  addItem();
+}
+
+init();
+</script>
+</body>
+</html>
